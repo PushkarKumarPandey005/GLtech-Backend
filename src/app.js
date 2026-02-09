@@ -5,29 +5,31 @@ import userRoutes from "./routes/user.router.js";
 
 const app = express();
 
-// Allowed origins: local + production (Vercel)
 const allowedOrigins = [
   "http://localhost:5173",
-  process.env.FRONTEND_URL, // set this on Render
+  process.env.FRONTEND_URL,
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like Postman, mobile apps)
-    if (!origin) return callback(null, true);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    } else {
-      return callback(new Error("CORS not allowed for this origin: " + origin));
-    }
-  },
-  credentials: true,
-}));
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
+
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200); // <-- THIS FIXES PREFLIGHT
+  }
+
+  next();
+});
 
 app.use(express.json());
 
-// Routes
 app.use("/api/products", productsRoutes);
 app.use("/user", userRoutes);
 
