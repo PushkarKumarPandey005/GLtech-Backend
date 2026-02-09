@@ -1,6 +1,6 @@
 import express from "express";
 import {registerUser,verification,userLogin,adminLogin,logoutUser,forgetPassword,
-  verifyOTP,changePassword,} from "../Controllers/user.controller.js";
+  verifyOTP,changePassword,} from "../controllers/user.controller.js";
 import {getAdminProfile, updateAdminProfile, changeAdminPassword } from '../controllers/admin.controller.js'  
 
 import isAuthenticated from "../middleware/middleware.user.isAuthenticated.js";
