@@ -296,13 +296,6 @@ export const deleteProduct = async (req, res) => {
 
 
 export const getPublicProducts = async (req, res) => {
- console.log("FULL REQUEST:", {
-  query: req.query,
-  body: req.body,
-  params: req.params
-});
-
-
   try {
     const {
       type,
@@ -323,107 +316,121 @@ export const getPublicProducts = async (req, res) => {
 
     const filter = {};
 
-    // ------------------------------------------------
-    // BASIC FILTER
-    // ------------------------------------------------
+    // -----------------------------------------
+    // BASIC TYPE FILTER
+    // -----------------------------------------
     if (type) filter.type = type;
 
-    // ------------------------------------------------
-    // PURPOSE FILTER (VERY IMPORTANT FIX)
-    // ------------------------------------------------
-    if (purpose) 
-      filter.purpose = { $regex: purpose, $options: "i" };
-    
+    // -----------------------------------------
+    // PURPOSE FILTER
+    // -----------------------------------------
+    if (purpose) {
+      filter.purpose = purpose.toLowerCase();
+    }
 
-    // ------------------------------------------------
+    // -----------------------------------------
     // SIDEBAR FILTERS
-    // ------------------------------------------------
-    if (location)
+    // -----------------------------------------
+    if (location) {
       filter.location = { $regex: location, $options: "i" };
+    }
 
-    if (furnished)
+    if (furnished) {
       filter.furnished = { $regex: furnished, $options: "i" };
+    }
 
-    if (ownership)
+    if (ownership) {
       filter.ownership = { $regex: ownership, $options: "i" };
+    }
 
-    if (bhk)
-      filter.bhk = bhk;
+    if (bhk) {
+      filter.bhk = Number(bhk); // ✅ IMPORTANT FIX
+    }
 
-    // PRICE RANGE
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = Number(minPrice);
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
-    // ------------------------------------------------
-    // SMART NATURAL SEARCH
-    // ------------------------------------------------
+    if (minArea || maxArea) {
+      filter.area = {};
+      if (minArea) filter.area.$gte = Number(minArea);
+      if (maxArea) filter.area.$lte = Number(maxArea);
+    }
+
+    // -----------------------------------------
+    // 🔥 SMART NATURAL SEARCH
+    // -----------------------------------------
     if (q) {
-      const search = q.toLowerCase();
-      const words = search.split(/\s+/);
+      const search = q.toLowerCase().trim();
 
       // Detect BHK
       const bhkMatch = search.match(/(\d+)\s*bhk/);
-      if (bhkMatch) filter.bhk = bhkMatch[1];
+      if (bhkMatch) {
+        filter.bhk = Number(bhkMatch[1]);
+      }
 
       // Detect Purpose
-      if (search.includes("rent"))
+      if (search.includes("rent")) {
         filter.purpose = "rent";
+      }
 
-      if (search.includes("buy") || search.includes("sale"))
+      if (search.includes("buy") || search.includes("sale")) {
         filter.purpose = "sell";
+      }
+
+      // Detect Price
+      const underMatch = search.match(/under\s*(\d+)/);
+      if (underMatch) {
+        filter.price = { $lte: Number(underMatch[1]) };
+      }
+
+      const aboveMatch = search.match(/above\s*(\d+)/);
+      if (aboveMatch) {
+        filter.price = { $gte: Number(aboveMatch[1]) };
+      }
 
       // Detect Furnishing
-      if (search.includes("fully"))
+      if (search.includes("fully")) {
         filter.furnished = { $regex: "fully", $options: "i" };
+      }
 
-      if (search.includes("semi"))
+      if (search.includes("semi")) {
         filter.furnished = { $regex: "semi", $options: "i" };
+      }
 
-      if (search.includes("unfurnished"))
+      if (search.includes("unfurnished")) {
         filter.furnished = { $regex: "unfurnished", $options: "i" };
+      }
 
-      // Detect Price Under
-      const underMatch = search.match(/under\s*(\d+)/);
-      if (underMatch)
-        filter.price = { $lte: Number(underMatch[1]) };
+      // Global flexible match (any field)
+      const searchableFields = [
+        "title",
+        "description",
+        "location",
+        "furnished",
+        "parking",
+        "area",
+        "purpose"
+      ];
 
-      // Detect Price Above
-      const aboveMatch = search.match(/above\s*(\d+)/);
-      if (aboveMatch)
-        filter.price = { $gte: Number(aboveMatch[1]) };
-
-      // Detect City
-      const cities = ["indore", "delhi", "bhopal", "mumbai", "bangalore"];
-      const foundCity = cities.find(city => search.includes(city));
-      if (foundCity)
-        filter.location = { $regex: foundCity, $options: "i" };
-
-      // Text search in title & description
-      filter.$and = words.map(word => ({
-        $or: [
-          { title: { $regex: word, $options: "i" } },
-          { description: { $regex: word, $options: "i" } }
-        ]
+      filter.$or = searchableFields.map(field => ({
+        [field]: { $regex: search, $options: "i" }
       }));
     }
 
-    // ------------------------------------------------
+    // -----------------------------------------
     // SORTING
-    // ------------------------------------------------
+    // -----------------------------------------
     let sortOption = { createdAt: -1 };
 
-    if (sort === "price_low")
-      sortOption = { price: 1 };
+    if (sort === "price_low") sortOption = { price: 1 };
+    if (sort === "price_high") sortOption = { price: -1 };
 
-    if (sort === "price_high")
-      sortOption = { price: -1 };
-
-    // ------------------------------------------------
+    // -----------------------------------------
     // PAGINATION
-    // ------------------------------------------------
+    // -----------------------------------------
     const pageNumber = Number(page);
     const limitNumber = Number(limit);
     const skip = (pageNumber - 1) * limitNumber;
@@ -452,6 +459,7 @@ export const getPublicProducts = async (req, res) => {
     });
   }
 };
+
 
 
 
