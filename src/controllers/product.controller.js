@@ -296,6 +296,13 @@ export const deleteProduct = async (req, res) => {
 
 
 export const getPublicProducts = async (req, res) => {
+ console.log("FULL REQUEST:", {
+  query: req.query,
+  body: req.body,
+  params: req.params
+});
+
+
   try {
     const {
       type,
@@ -309,8 +316,9 @@ export const getPublicProducts = async (req, res) => {
       maxArea,
       sort,
       q,
-      page = 1,      // ✅ NEW
-      limit = 8      // ✅ NEW
+      purpose,
+      page = 1,
+      limit = 8
     } = req.query;
 
     const filter = {};
@@ -321,38 +329,79 @@ export const getPublicProducts = async (req, res) => {
     if (type) filter.type = type;
 
     // ------------------------------------------------
-    // SMART SEARCH
+    // PURPOSE FILTER (VERY IMPORTANT FIX)
+    // ------------------------------------------------
+    if (purpose) 
+      filter.purpose = { $regex: purpose, $options: "i" };
+    
+
+    // ------------------------------------------------
+    // SIDEBAR FILTERS
+    // ------------------------------------------------
+    if (location)
+      filter.location = { $regex: location, $options: "i" };
+
+    if (furnished)
+      filter.furnished = { $regex: furnished, $options: "i" };
+
+    if (ownership)
+      filter.ownership = { $regex: ownership, $options: "i" };
+
+    if (bhk)
+      filter.bhk = bhk;
+
+    // PRICE RANGE
+    if (minPrice || maxPrice) {
+      filter.price = {};
+      if (minPrice) filter.price.$gte = Number(minPrice);
+      if (maxPrice) filter.price.$lte = Number(maxPrice);
+    }
+
+    // ------------------------------------------------
+    // SMART NATURAL SEARCH
     // ------------------------------------------------
     if (q) {
       const search = q.toLowerCase();
       const words = search.split(/\s+/);
 
+      // Detect BHK
       const bhkMatch = search.match(/(\d+)\s*bhk/);
       if (bhkMatch) filter.bhk = bhkMatch[1];
 
-      if (search.includes("fully")) {
-        filter.furnished = { $regex: "fully", $options: "i" };
-      } else if (search.includes("semi")) {
-        filter.furnished = { $regex: "semi", $options: "i" };
-      } else if (search.includes("unfurnished")) {
-        filter.furnished = { $regex: "unfurnished", $options: "i" };
-      }
+      // Detect Purpose
+      if (search.includes("rent"))
+        filter.purpose = "rent";
 
-      if (search.includes("rent")) filter.purpose = "rent";
       if (search.includes("buy") || search.includes("sale"))
         filter.purpose = "sell";
 
+      // Detect Furnishing
+      if (search.includes("fully"))
+        filter.furnished = { $regex: "fully", $options: "i" };
+
+      if (search.includes("semi"))
+        filter.furnished = { $regex: "semi", $options: "i" };
+
+      if (search.includes("unfurnished"))
+        filter.furnished = { $regex: "unfurnished", $options: "i" };
+
+      // Detect Price Under
       const underMatch = search.match(/under\s*(\d+)/);
-      if (underMatch) filter.price = { $lte: Number(underMatch[1]) };
+      if (underMatch)
+        filter.price = { $lte: Number(underMatch[1]) };
 
+      // Detect Price Above
       const aboveMatch = search.match(/above\s*(\d+)/);
-      if (aboveMatch) filter.price = { $gte: Number(aboveMatch[1]) };
+      if (aboveMatch)
+        filter.price = { $gte: Number(aboveMatch[1]) };
 
+      // Detect City
       const cities = ["indore", "delhi", "bhopal", "mumbai", "bangalore"];
       const foundCity = cities.find(city => search.includes(city));
       if (foundCity)
         filter.location = { $regex: foundCity, $options: "i" };
 
+      // Text search in title & description
       filter.$and = words.map(word => ({
         $or: [
           { title: { $regex: word, $options: "i" } },
@@ -362,32 +411,15 @@ export const getPublicProducts = async (req, res) => {
     }
 
     // ------------------------------------------------
-    // SIDEBAR FILTERS
-    // ------------------------------------------------
-    if (location) filter.location = { $regex: location, $options: "i" };
-    if (furnished) filter.furnished = { $regex: furnished, $options: "i" };
-    if (ownership) filter.ownership = { $regex: ownership, $options: "i" };
-    if (bhk) filter.bhk = bhk;
-
-    if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = Number(minPrice);
-      if (maxPrice) filter.price.$lte = Number(maxPrice);
-    }
-
-    if (minArea || maxArea) {
-      filter.area = {};
-      if (minArea) filter.area.$gte = Number(minArea);
-      if (maxArea) filter.area.$lte = Number(maxArea);
-    }
-
-    // ------------------------------------------------
     // SORTING
     // ------------------------------------------------
     let sortOption = { createdAt: -1 };
 
-    if (sort === "price_low") sortOption = { price: 1 };
-    if (sort === "price_high") sortOption = { price: -1 };
+    if (sort === "price_low")
+      sortOption = { price: 1 };
+
+    if (sort === "price_high")
+      sortOption = { price: -1 };
 
     // ------------------------------------------------
     // PAGINATION
@@ -398,11 +430,11 @@ export const getPublicProducts = async (req, res) => {
 
     const products = await Product.find(filter)
       .sort(sortOption)
-      .skip(skip)      // ✅ ADDED
-      .limit(limitNumber) // ✅ ADDED
+      .skip(skip)
+      .limit(limitNumber)
       .lean();
 
-    const total = await Product.countDocuments(filter); // ✅ TOTAL COUNT
+    const total = await Product.countDocuments(filter);
 
     res.status(200).json({
       success: true,
@@ -419,7 +451,7 @@ export const getPublicProducts = async (req, res) => {
       message: err.message
     });
   }
-}
+};
 
 
 

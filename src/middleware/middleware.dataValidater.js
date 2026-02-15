@@ -7,7 +7,7 @@ import Joi from "joi";
 export const validateProduct = (req, res, next) => {
 
   console.log("REQ BODY:", req.body);
-console.log("TYPE VALUE:", req.body.type);
+  console.log("TYPE VALUE:", req.body.type);
   const schema = Joi.object({
     title: Joi.string().required(),
     description: Joi.string().allow(""),
@@ -43,6 +43,11 @@ console.log("TYPE VALUE:", req.body.type);
     }),
 
 
+    bhk: Joi.when("type", {
+      is: "property",
+      then: Joi.number().min(1).max(8).required(),
+      otherwise: Joi.optional(),
+    }),
 
 
     area: Joi.when("type", {

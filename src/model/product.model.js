@@ -39,6 +39,14 @@ const productSchema = new mongoose.Schema({
         required: true
     },
 
+    bhk: {
+        type: Number,
+        required: function () {
+            return this.type === "property";
+        }
+    },
+
+
 
 }, { timestamps: true });
 
