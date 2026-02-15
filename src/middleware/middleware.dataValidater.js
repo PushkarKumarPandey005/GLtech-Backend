@@ -1,6 +1,13 @@
+
 import Joi from "joi";
 
+
+
+
 export const validateProduct = (req, res, next) => {
+
+  console.log("REQ BODY:", req.body);
+console.log("TYPE VALUE:", req.body.type);
   const schema = Joi.object({
     title: Joi.string().required(),
     description: Joi.string().allow(""),
@@ -36,6 +43,8 @@ export const validateProduct = (req, res, next) => {
     }),
 
 
+
+
     area: Joi.when("type", {
       is: "property",
       then: Joi.string().required(),
@@ -62,13 +71,21 @@ export const validateProduct = (req, res, next) => {
 
     priceNegotiable: Joi.when("type", {
       is: "property",
-      then: Joi.string().required(),
+      then: Joi.boolean().required(),
       otherwise: Joi.optional(),
     }),
+
+
 
     ownerContact: Joi.when("type", {
       is: "property",
       then: Joi.string().required(),
+      otherwise: Joi.optional(),
+    }),
+
+    purpose: Joi.string().when("type", {
+      is: "property",
+      then: Joi.valid("sell", "rent").required(),
       otherwise: Joi.optional(),
     }),
 

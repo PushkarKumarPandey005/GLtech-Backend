@@ -33,6 +33,11 @@ const productSchema = new mongoose.Schema({
     voltage: { type: String },
     warranty: { type: String },
     dimensions: { type: String },
+    purpose: {
+        type: String,
+        enum: ["sell", "rent"],
+        required: true
+    },
 
 
 }, { timestamps: true });

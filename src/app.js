@@ -30,11 +30,21 @@ app.use(express.json());
 
 /* ---------- SECURITY LAYER 3 : MONGO SANITIZE (Express v5 SAFE) ---------- */
 app.use((req, res, next) => {
-  if (req.body) req.body = mongoSanitize(req.body);
-  if (req.query) req.query = mongoSanitize(req.query);
-  if (req.params) req.params = mongoSanitize(req.params);
+  if (req.body) {
+    Object.assign(req.body, mongoSanitize(req.body));
+  }
+
+  if (req.query) {
+    Object.assign(req.query, mongoSanitize(req.query));
+  }
+
+  if (req.params) {
+    Object.assign(req.params, mongoSanitize(req.params));
+  }
+
   next();
 });
+
 
 /* ---------- SECURITY LAYER 4 : CORS ---------- */
 app.use((req, res, next) => {
