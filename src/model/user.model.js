@@ -23,14 +23,14 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    //ROLE SYSTEM
+    
     role: {
       type: String,
       enum: ["admin", "user"],
       default: "user",
     },
 
-    // PROFILE FIELDS (NEW)
+  
     profilePhoto: {
       type: String,
       default: "",
@@ -51,7 +51,7 @@ const userSchema = new mongoose.Schema(
       default: "",
     },
 
-    // AUTH FIELDS
+    
     isVerified: {
       type: Boolean,
       default: false,

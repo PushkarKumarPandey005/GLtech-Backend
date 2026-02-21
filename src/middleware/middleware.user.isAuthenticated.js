@@ -41,6 +41,7 @@ const isAuthenticated = async (req, res, next) => {
     }
 
     // attach user id to request
+  //-----------------------------------------
     req.userId = user._id;
 
     next();

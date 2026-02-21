@@ -5,30 +5,41 @@ import mongoSanitize from "mongo-sanitize";
 
 import productsRoutes from './routes/product.router.js';
 import userRoutes from "./routes/user.router.js";
+import orderRoutes from "./routes/order.router.js";
+import paymentRoutes from "./routes/payment.router.js";
+import invoiceRoutes from "./routes/invoice.router.js";
+import blogRoutes from "./routes/blog.router.js";
 
 const app = express();
 
-/* ---------- SECURITY LAYER 1 : HELMET ---------- */
+/* ---------- Security Layer 1 Helmet ---------- */
 app.use(helmet());
 
-/* ---------- SECURITY LAYER 2 : RATE LIMIT ---------- */
+/* ---------- Security layer 2 Rate Limit ---------- */
 const limiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 100,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 500, // 500 requests per 15 minutes (much higher for dev)
   message: {
     success: false,
-    message: "Too many requests from this IP. Try again after 10 minutes.",
+    message: "Too many requests from this IP. Try again later.",
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for API property endpoints during development
+    if (req.path.includes('/api/products/properties')) {
+      return true; // Don't rate limit this endpoint
+    }
+    return false;
+  }
 });
 
 app.use(limiter);
 
-/* ---------- BODY PARSER ---------- */
+/* ---------- Body Parser ---------- */
 app.use(express.json());
 
-/* ---------- SECURITY LAYER 3 : MONGO SANITIZE (Express v5 SAFE) ---------- */
+/* ---------- Security Layer 3 : Mongo Senitise ---------- */
 app.use((req, res, next) => {
   if (req.body) {
     Object.assign(req.body, mongoSanitize(req.body));
@@ -46,7 +57,7 @@ app.use((req, res, next) => {
 });
 
 
-/* ---------- SECURITY LAYER 4 : CORS ---------- */
+/* ---------- Security 4 Layer ---------- */
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.header("Vary", "Origin");
@@ -64,8 +75,12 @@ app.use((req, res, next) => {
   next();
 });
 
-/* ---------- ROUTES ---------- */
+/* ---------- Routes ---------- */
 app.use("/api/products", productsRoutes);
 app.use("/user", userRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/invoices", invoiceRoutes);
+app.use("/api/blogs", blogRoutes);
 
 export default app;

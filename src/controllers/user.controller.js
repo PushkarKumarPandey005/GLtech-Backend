@@ -21,7 +21,7 @@ export const registerUser = async (req, res) => {
       userName,
       email,
       password: hashedPass,
-      role: "user", // always user
+      role: "user", 
     });
 
     const token = jwt.sign(
@@ -90,7 +90,7 @@ export const login = async (req, res, expectedRole) => {
       return res.status(403).json({ success: false, message: "Verify email first" });
     }
 
-    // ROLE CHECK
+    // Role check
     if (user.role !== expectedRole) {
       return res.status(403).json({
         success: false,
@@ -124,7 +124,7 @@ export const login = async (req, res, expectedRole) => {
   }
 }
 
-// ================= ROUTE WRAPPERS =================
+// ================= Route Reapers =================
 export const userLogin = (req, res) => login(req, res, "user");
 export const adminLogin = (req, res) => login(req, res, "admin");
 

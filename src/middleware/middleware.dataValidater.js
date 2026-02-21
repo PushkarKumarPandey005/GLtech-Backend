@@ -2,8 +2,6 @@
 import Joi from "joi";
 
 
-
-
 export const validateProduct = (req, res, next) => {
 
   console.log("REQ BODY:", req.body);
