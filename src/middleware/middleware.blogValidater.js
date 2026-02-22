@@ -1,7 +1,7 @@
 import Joi from "joi";
 
 /* ================================
-   📝 CREATE BLOG VALIDATION
+    CREATE BLOG VALIDATION
 ================================ */
 
 export const createBlogSchema = Joi.object({

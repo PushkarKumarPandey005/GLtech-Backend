@@ -1,6 +1,6 @@
 import express from "express";
 import {createBlog, updateBlog, getBlogs, getBlogBySlug, deleteBlog,} from "../controllers/blog.controller.js";
-import { validate } from "../middleware/middleware.dataValidater.js";
+import { validate } from "../middleware/middleware.blogData.validater.js";
 import { createBlogSchema, updateBlogSchema,
 } from "../middleware/middleware.blogValidater.js";
 
