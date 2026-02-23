@@ -32,7 +32,7 @@ router.get("/stationery", getStationeryProducts);
 router.get("/slug/:slug", getProductBySlug);
 
 // =======================
-// 🧱 GENERIC ROUTES LAST
+//  GENERIC ROUTES LAST
 // =======================
 
 router.get('/', getAllProducts);
