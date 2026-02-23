@@ -44,11 +44,7 @@ export const createBlogSchema = Joi.object({
     }),
 
   // ⭐ IMPORTANT FIX — optional string
-  featuredImage: Joi.string()
-    .uri()
-    .allow("")
-    .optional(),
-
+featuredImage: Joi.any().optional(),
   // Classification
   category: Joi.string().allow("").optional(),
 
