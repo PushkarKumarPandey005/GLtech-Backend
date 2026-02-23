@@ -3,14 +3,25 @@ import {createBlog, updateBlog, getBlogs, getBlogBySlug, deleteBlog,} from "../c
 import { validate } from "../middleware/middleware.blogData.validater.js";
 import { createBlogSchema, updateBlogSchema,
 } from "../middleware/middleware.blogValidater.js";
+import upload from "../middleware/middleware.multer.js";
 
 const router = express.Router();
 
 // CREATE BLOG
-router.post("/", validate(createBlogSchema), createBlog);
+router.post(
+  "/",
+  upload.single("featuredImage"), // ⭐ YE LINE ADD KARO
+  validate(createBlogSchema),
+  createBlog
+);
 
 // UPDATE BLOG
-router.put("/:id", validate(updateBlogSchema), updateBlog);
+router.put(
+  "/:id",
+  upload.single("featuredImage"), // ⭐ ADD THIS
+  validate(updateBlogSchema),
+  updateBlog
+);
 
 // GET BLOGS
 router.get("/", getBlogs);

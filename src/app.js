@@ -37,7 +37,13 @@ const limiter = rateLimit({
 app.use(limiter);
 
 /* ---------- Body Parser ---------- */
+/* ---------- Body Parser ---------- */
 app.use(express.json());
+
+/* ---------- ⭐ ADD THIS HERE ---------- */
+app.use("/uploads", express.static("uploads"));
+
+/* ---------- Security Layer 3 : Mongo Senitise ---------- */
 
 /* ---------- Security Layer 3 : Mongo Senitise ---------- */
 app.use((req, res, next) => {

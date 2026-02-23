@@ -13,6 +13,7 @@ const generateSlug = (title) =>
 /* ================================
         CREATE BLOG
 ================================ */
+
 export const createBlog = async (req, res) => {
   try {
     const {
@@ -20,7 +21,6 @@ export const createBlog = async (req, res) => {
       slug,
       excerpt,
       content,
-      featuredImage,
       category,
       tags,
       metaTitle,
@@ -37,10 +37,15 @@ export const createBlog = async (req, res) => {
       });
     }
 
+    // ✅ ⭐ IMAGE FIX (MOST IMPORTANT)
+    const featuredImage = req.file
+      ? `/uploads/${req.file.filename}`
+      : "";
+
     // slug auto
     let finalSlug = slug || generateSlug(title);
 
-    //  ensure unique slug
+    // ensure unique slug
     const existing = await Blog.findOne({ slug: finalSlug });
     if (existing) {
       finalSlug = `${finalSlug}-${Date.now()}`;
@@ -51,7 +56,7 @@ export const createBlog = async (req, res) => {
       slug: finalSlug,
       excerpt,
       content,
-      featuredImage,
+      featuredImage, // ✅ fixed
       category,
       tags,
       metaTitle: metaTitle || title,
@@ -73,7 +78,7 @@ export const createBlog = async (req, res) => {
       message: error.message
     });
   }
-}
+};
 
 /* ================================
     GET ALL BLOGS (PUBLIC)
@@ -173,10 +178,18 @@ export const getBlogBySlug = async (req, res) => {
 /* ================================
     UPDATE BLOG (ADMIN)
 ================================ */
+/* ================================
+    UPDATE BLOG (ADMIN)
+================================ */
 export const updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = { ...req.body };
+
+    // ✅ ⭐ IMAGE UPDATE FIX
+    if (req.file) {
+      updates.featuredImage = `/uploads/${req.file.filename}`;
+    }
 
     // regenerate slug if title changed
     if (updates.title && !updates.slug) {
@@ -185,29 +198,29 @@ export const updateBlog = async (req, res) => {
 
     const blog = await Blog.findByIdAndUpdate(id, updates, {
       new: true,
-      runValidators: true
+      runValidators: true,
     });
 
     if (!blog) {
       return res.status(404).json({
         success: false,
-        message: "Blog not found"
+        message: "Blog not found",
       });
     }
 
     res.json({
       success: true,
       message: "Blog updated successfully",
-      blog
+      blog,
     });
   } catch (error) {
     console.error("Update Blog Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
-}
+};
 
 /* ================================
     DELETE BLOG (ADMIN)
