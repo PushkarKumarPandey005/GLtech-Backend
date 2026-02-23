@@ -9,6 +9,7 @@ import orderRoutes from "./routes/order.router.js";
 import paymentRoutes from "./routes/payment.router.js";
 import invoiceRoutes from "./routes/invoice.router.js";
 import blogRoutes from "./routes/blog.router.js";
+import uploadRoutes from "./routes/upload.router.js"; 
 
 const app = express();
 
@@ -88,5 +89,6 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/invoices", invoiceRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/api", uploadRoutes);
 
 export default app;

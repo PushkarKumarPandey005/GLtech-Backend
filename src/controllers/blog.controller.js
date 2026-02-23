@@ -13,10 +13,9 @@ const generateSlug = (title) =>
 /* ================================
         CREATE BLOG
 ================================ */
-
 export const createBlog = async (req, res) => {
   try {
-    const {
+    let {
       title,
       slug,
       excerpt,
@@ -27,55 +26,71 @@ export const createBlog = async (req, res) => {
       metaDescription,
       language,
       status,
-      author
+      author,
     } = req.body;
 
+    /* ---------- Required check ---------- */
     if (!title || !content) {
       return res.status(400).json({
         success: false,
-        message: "Title and content are required"
+        message: "Title and content are required",
       });
     }
 
-    // ✅ ⭐ IMAGE FIX (MOST IMPORTANT)
-    const featuredImage = req.file
-      ? `/uploads/${req.file.filename}`
-      : "";
+    /* ---------- ⭐ FIX: tags normalize ---------- */
+    if (typeof tags === "string") {
+      try {
+        tags = JSON.parse(tags);
+      } catch {
+        tags = [tags];
+      }
+    }
 
-    // slug auto
+    if (!Array.isArray(tags)) {
+      tags = [];
+    }
+
+    /* ---------- ⭐ FIX: image URL build ---------- */
+    let featuredImage = "";
+
+    if (req.file) {
+      featuredImage = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    }
+
+    /* ---------- slug auto ---------- */
     let finalSlug = slug || generateSlug(title);
 
-    // ensure unique slug
     const existing = await Blog.findOne({ slug: finalSlug });
     if (existing) {
       finalSlug = `${finalSlug}-${Date.now()}`;
     }
 
+    /* ---------- create blog ---------- */
     const blog = await Blog.create({
       title,
       slug: finalSlug,
       excerpt,
       content,
-      featuredImage, // ✅ fixed
+      featuredImage,
       category,
       tags,
       metaTitle: metaTitle || title,
       metaDescription: metaDescription || excerpt,
       language: language || "en",
       status: status || "published",
-      author
+      author,
     });
 
     res.status(201).json({
       success: true,
       message: "Blog created successfully",
-      blog
+      blog,
     });
   } catch (error) {
     console.error("Create Blog Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
 };
@@ -90,24 +105,20 @@ export const getBlogs = async (req, res) => {
       limit = 10,
       category,
       search,
-      language = "en"
+      language = "en",
     } = req.query;
 
     const query = {
       status: "published",
-      language
+      language,
     };
 
-    //  category filter
-    if (category) {
-      query.category = category;
-    }
+    if (category) query.category = category;
 
-    //  search
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: "i" } },
-        { excerpt: { $regex: search, $options: "i" } }
+        { excerpt: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -119,8 +130,7 @@ export const getBlogs = async (req, res) => {
         .skip(skip)
         .limit(Number(limit))
         .select("-content"),
-
-      Blog.countDocuments(query)
+      Blog.countDocuments(query),
     ]);
 
     res.json({
@@ -128,16 +138,16 @@ export const getBlogs = async (req, res) => {
       total,
       page: Number(page),
       totalPages: Math.ceil(total / limit),
-      data: blogs
+      data: blogs,
     });
   } catch (error) {
     console.error("Get Blogs Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
-}
+};
 
 /* ================================
     GET BLOG BY SLUG
@@ -148,50 +158,54 @@ export const getBlogBySlug = async (req, res) => {
 
     const blog = await Blog.findOne({
       slug,
-      status: "published"
+      status: "published",
     });
 
     if (!blog) {
       return res.status(404).json({
         success: false,
-        message: "Blog not found"
+        message: "Blog not found",
       });
     }
 
-    //  increment views
     blog.views += 1;
     await blog.save();
 
     res.json({
       success: true,
-      data: blog
+      data: blog,
     });
   } catch (error) {
     console.error("Get Blog Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
-}
+};
 
 /* ================================
-    UPDATE BLOG (ADMIN)
-================================ */
-/* ================================
-    UPDATE BLOG (ADMIN)
+    UPDATE BLOG
 ================================ */
 export const updateBlog = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = { ...req.body };
 
-    // ✅ ⭐ IMAGE UPDATE FIX
-    if (req.file) {
-      updates.featuredImage = `/uploads/${req.file.filename}`;
+    /* ---------- tags normalize ---------- */
+    if (typeof updates.tags === "string") {
+      try {
+        updates.tags = JSON.parse(updates.tags);
+      } catch {
+        updates.tags = [updates.tags];
+      }
     }
 
-    // regenerate slug if title changed
+    /* ---------- image update ---------- */
+    if (req.file) {
+      updates.featuredImage = `${req.protocol}://${req.get("host")}/uploads/${req.file.filename}`;
+    }
+
     if (updates.title && !updates.slug) {
       updates.slug = generateSlug(updates.title);
     }
@@ -223,7 +237,7 @@ export const updateBlog = async (req, res) => {
 };
 
 /* ================================
-    DELETE BLOG (ADMIN)
+    DELETE BLOG
 ================================ */
 export const deleteBlog = async (req, res) => {
   try {
@@ -234,19 +248,19 @@ export const deleteBlog = async (req, res) => {
     if (!blog) {
       return res.status(404).json({
         success: false,
-        message: "Blog not found"
+        message: "Blog not found",
       });
     }
 
     res.json({
       success: true,
-      message: "Blog deleted successfully"
+      message: "Blog deleted successfully",
     });
   } catch (error) {
     console.error("Delete Blog Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message,
     });
   }
-}
+};
