@@ -22,6 +22,7 @@ export const createBlogSchema = Joi.object({
     .lowercase()
     .pattern(/^[a-z0-9-]+$/)
     .optional()
+    .allow("")
     .messages({
       "string.pattern.base":
         "Slug can contain only lowercase letters, numbers and hyphens"
@@ -42,49 +43,37 @@ export const createBlogSchema = Joi.object({
       "string.min": "Content must be at least 20 characters"
     }),
 
+  // ⭐ IMPORTANT FIX — optional string
   featuredImage: Joi.string()
     .uri()
     .allow("")
-    .messages({
-      "string.uri": "Featured image must be a valid URL"
-    }),
+    .optional(),
 
   // Classification
   category: Joi.string().allow("").optional(),
 
-  tags: Joi.array()
-    .items(Joi.string().trim())
+  // ⭐⭐⭐ BIG FIX — accept string OR array
+  tags: Joi.alternatives()
+    .try(
+      Joi.array().items(Joi.string().trim()),
+      Joi.string() // because FormData sends string
+    )
     .optional(),
 
   // SEO Fields
-  metaTitle: Joi.string()
-    .max(60)
-    .allow("")
-    .messages({
-      "string.max": "Meta title should be under 60 characters"
-    }),
+  metaTitle: Joi.string().max(60).allow("").optional(),
 
-  metaDescription: Joi.string()
-    .max(160)
-    .allow("")
-    .messages({
-      "string.max": "Meta description should be under 160 characters"
-    }),
+  metaDescription: Joi.string().max(160).allow("").optional(),
 
   // Language
-  language: Joi.string()
-    .valid("en", "hi")
-    .optional(),
+  language: Joi.string().valid("en", "hi").optional(),
 
   // Status
-  status: Joi.string()
-    .valid("draft", "published")
-    .optional(),
+  status: Joi.string().valid("draft", "published").optional(),
 
   // Author
   author: Joi.string().allow("").optional()
 });
-
 
 /* ================================
      UPDATE BLOG VALIDATION
