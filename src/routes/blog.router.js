@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middleware/middleware.multer.js";
 import {
   createBlog,
   updateBlog,
@@ -7,7 +8,6 @@ import {
   deleteBlog,
 } from "../controllers/blog.controller.js";
 
-import upload from "../middleware/middleware.multer.js";
 import { validate } from "../middleware/middleware.blogData.validater.js";
 import {
   createBlogSchema,
@@ -21,8 +21,7 @@ const router = express.Router();
 ================================ */
 router.post(
   "/",
-  upload.single("featuredImage"), // ⭐ REQUIRED for image
-  validate(createBlogSchema),
+  validate(createBlogSchema), // ✅ multer हटाया
   createBlog
 );
 
@@ -31,8 +30,7 @@ router.post(
 ================================ */
 router.put(
   "/:id",
-  upload.single("featuredImage"), // ⭐ REQUIRED for image update
-  validate(updateBlogSchema),
+  validate(updateBlogSchema), // ✅ multer हटाया
   updateBlog
 );
 
@@ -50,5 +48,13 @@ router.get("/:slug", getBlogBySlug);
    DELETE BLOG
 ================================ */
 router.delete("/:id", deleteBlog);
+
+router.post("/upload", upload.single("file"), async (req, res) => {
+  console.log("UPLOAD FILE:", req.file);
+
+  const result = await cloudinary.uploader.upload(req.file.path);
+
+  res.json({ url: result.secure_url });
+});
 
 export default router;
