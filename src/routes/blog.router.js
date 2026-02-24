@@ -1,5 +1,4 @@
 import express from "express";
-import upload from "../middleware/middleware.multer.js";
 import {
   createBlog,
   updateBlog,
@@ -49,12 +48,6 @@ router.get("/:slug", getBlogBySlug);
 ================================ */
 router.delete("/:id", deleteBlog);
 
-router.post("/upload", upload.single("file"), async (req, res) => {
-  console.log("UPLOAD FILE:", req.file);
 
-  const result = await cloudinary.uploader.upload(req.file.path);
-
-  res.json({ url: result.secure_url });
-});
 
 export default router;
