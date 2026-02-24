@@ -12,7 +12,7 @@ import blogRoutes from "./routes/blog.router.js";
 import uploadRoutes from "./routes/upload.router.js"; 
 
 const app = express();
-
+app.set("trust proxy", 1);
 /* ---------- Security Layer 1 Helmet ---------- */
 app.use(helmet());
 

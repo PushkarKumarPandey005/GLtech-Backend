@@ -17,6 +17,7 @@ const generateSlug = (title) =>
         CREATE BLOG
 ================================ */
 export const createBlog = async (req, res) => {
+    console.log("REQ.FILE →", req.file);
   try {
     let {
       title,
