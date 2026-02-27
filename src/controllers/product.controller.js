@@ -3,46 +3,105 @@ import Product from '../model/product.model.js'
 import cloudinary from "../config/config.cloudinary.js"
 import fs from "fs";
 
+
+
+/* ---------- retry uploader ---------- */
+const uploadWithRetry = async (filePath, retries = 1) => {
+  try {
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder: "products",
+      timeout: 60000,
+    });
+
+    if (!result?.secure_url) {
+      throw new Error("Invalid Cloudinary response");
+    }
+
+    return result;
+  } catch (err) {
+    const isTimeout =
+      err?.error?.http_code === 499 ||
+      err?.error?.name === "TimeoutError" ||
+      err?.code === "ENOTFOUND";
+
+    console.error("Cloudinary upload failed:", err);
+
+    if (isTimeout && retries > 0) {
+      console.warn("Retrying upload...");
+      await new Promise((r) => setTimeout(r, 1500));
+      return uploadWithRetry(filePath, retries - 1);
+    }
+
+    throw err;
+  }
+};
+
 export const addProduct = async (req, res) => {
   try {
-
     let imageUrls = [];
 
+    /* ---------- SEQUENTIAL UPLOAD (STABLE) ---------- */
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path);
-        imageUrls.push(result.secure_url);
-        fs.unlinkSync(file.path);
+        try {
+          const result = await uploadWithRetry(file.path, 1);
+          imageUrls.push(result.secure_url);
+        } catch (err) {
+          console.error("Single image upload failed:", err);
+          throw err;
+        } finally {
+          // ✅ ALWAYS delete local file
+          try {
+            if (file?.path && fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+              console.log("Local file deleted:", file.path);
+            }
+          } catch (delErr) {
+            console.error("File delete failed:", delErr);
+          }
+        }
       }
     }
 
+    /* ---------- CREATE PRODUCT ---------- */
     const newProduct = await Product.create({
       ...req.body,
       priceNegotiable: req.body.priceNegotiable === "true",
       productImg: imageUrls,
     });
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Product added successfully",
       data: newProduct,
     });
-
   } catch (err) {
-    res.status(500).json({
+    console.error("Add Product Error:", err);
+
+    return res.status(500).json({
       success: false,
-      message: err.message,
+      message: err?.message || "Server error",
     });
   }
-}
-
+};
 
 export const getAllProducts = async (req, res) => {
   try {
+    const {
+      type,
+      purpose,
+      location,
+      minPrice,
+      maxPrice,
+      page = 1,
+      limit = 10,
+    } = req.query;
 
-    const { type, purpose, location, minPrice, maxPrice } = req.query;
+    const pageNumber = Math.max(1, Number(page));
+    const limitNumber = Math.max(1, Number(limit));
+    const skip = (pageNumber - 1) * limitNumber;
 
-    let filter = {};
+    const filter = {};
 
     if (type) filter.type = type;
     if (purpose) filter.purpose = purpose;
@@ -54,22 +113,32 @@ export const getAllProducts = async (req, res) => {
       if (maxPrice) filter.price.$lte = Number(maxPrice);
     }
 
-    const products = await Product.find(filter);
+    // ✅ PARALLEL QUERIES (BIG SPEED BOOST)
+    const [products, total] = await Promise.all([
+      Product.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber)
+        .lean(),
+
+      // ✅ FAST COUNT
+      Product.estimatedDocumentCount(), // ⚠️ faster than countDocuments
+    ]);
 
     res.status(200).json({
       success: true,
-      count: products.length,
-      data: products
+      page: pageNumber,
+      totalPages: Math.ceil(total / limitNumber),
+      totalProducts: total,
+      data: products,
     });
-
   } catch (err) {
     res.status(500).json({
       success: false,
-      message: err.message
+      message: err.message,
     });
   }
-}
-
+};
 
 export const getProductsByType = async (req, res) => {
   try {
@@ -160,7 +229,6 @@ export const updateProduct = async (req, res) => {
     const { id } = req.params;
 
     const product = await Product.findById(id);
-
     if (!product) {
       return res.status(404).json({
         success: false,
@@ -168,78 +236,95 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    // Handle existing images from frontend
+    /* ================= EXISTING IMAGES ================= */
     let imageUrls = req.body.existingImages
       ? Array.isArray(req.body.existingImages)
         ? req.body.existingImages
         : [req.body.existingImages]
       : [];
 
-
-    // Delete remove image from cloudinary
-    // ------------------------------------------------
+    /* ================= DELETE REMOVED IMAGES ================= */
     const removedImages = product.productImg.filter(
       (img) => !imageUrls.includes(img)
     );
 
     for (const url of removedImages) {
-      const parts = url.split("/");
-      const fileName = parts.pop();
-      const folderName = parts.pop();
-      const publicId = `${folderName}/${fileName.split(".")[0]}`;
+      try {
+        const parts = url.split("/");
+        const fileName = parts.pop();
+        const folderName = parts.pop();
+        const publicId = `${folderName}/${fileName.split(".")[0]}`;
 
-      await cloudinary.uploader.destroy(publicId);
-    }
-
-
-    // Upload New Images
-    // ------------------------------------------------
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const result = await cloudinary.uploader.upload(file.path, {
-          folder: "properties",
-        });
-
-        imageUrls.push(result.secure_url);
-        fs.unlinkSync(file.path);
+        await cloudinary.uploader.destroy(publicId);
+      } catch (e) {
+        console.log("Cloudinary delete failed:", e.message);
       }
     }
 
+    /* ================= UPLOAD NEW IMAGES ================= */
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        try {
+          const result = await cloudinary.uploader.upload(file.path, {
+            folder: "products", // ⚠️ keep consistent
+          });
 
-    //  Boolean Fix
-    // ------------------------------------------------
+          imageUrls.push(result.secure_url);
+
+          // local delete
+          if (file?.path && fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        } catch (err) {
+          console.error("Image upload failed:", err);
+        }
+      }
+    }
+
+    /* ================= BOOLEAN FIX ================= */
     const priceNegotiable =
       req.body.priceNegotiable === "true" ||
       req.body.priceNegotiable === true;
 
+    /* ================= SAFE UPDATE OBJECT ================= */
+    const updateData = {
+      title: req.body.title,
+      description: req.body.description,
+      price: req.body.price,
+      discountPrice: req.body.discountPrice,
+      stock: req.body.stock,
+      size: req.body.size,
+      material: req.body.material,
+      weight: req.body.weight,
+      color: req.body.color,
+      brand: req.body.brand,
+      priceNegotiable,
+      productImg: imageUrls,
+    };
 
-    //  Update DB
-    // ------------------------------------------------
+    /* ================= DB UPDATE ================= */
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
+      updateData,
       {
-        ...req.body,
-        priceNegotiable,
-        productImg: imageUrls,
-      },
-      { new: true, runValidators: true }
+        new: true,
+        runValidators: true,
+      }
     );
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Product updated successfully",
       data: updatedProduct,
     });
-
   } catch (err) {
     console.log("ERROR:", err);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
   }
-}
-
+};
 
 
 
@@ -256,37 +341,44 @@ export const deleteProduct = async (req, res) => {
       });
     }
 
-    //  Delete Images from Cloudinary 
-    if (product.productImg && product.productImg.length > 0) {
-      for (const url of product.productImg) {
+    /* ================= DELETE IMAGES FROM CLOUDINARY ================= */
+    if (product.productImg?.length > 0) {
+      await Promise.all(
+        product.productImg.map(async (url) => {
+          try {
+            // ✅ robust publicId extraction
+            const publicId = url
+              .split("/")
+              .slice(-2)
+              .join("/")
+              .split(".")[0];
 
-        // Extract public ID correctly including folder
-        const parts = url.split("/");
-        const fileName = parts.pop();
-        const folderName = parts.pop();
+            const result = await cloudinary.uploader.destroy(publicId);
 
-        const publicId = `${folderName}/${fileName.split(".")[0]}`;
-
-        await cloudinary.uploader.destroy(publicId);
-      }
+            console.log("Cloudinary delete:", publicId, result.result);
+          } catch (err) {
+            console.error("Cloudinary delete failed:", err.message);
+          }
+        })
+      );
     }
 
-    // Delete Product from DB
+    /* ================= DELETE PRODUCT ================= */
     await Product.findByIdAndDelete(id);
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Product and images deleted successfully",
     });
-
   } catch (err) {
-    res.status(500).json({
+    console.error("Delete Product Error:", err);
+
+    return res.status(500).json({
       success: false,
       message: err.message,
     });
   }
-}
-
+};
 
 
 export const getPublicProducts = async (req, res) => {
@@ -866,10 +958,10 @@ export const getStationeryProducts = async (req, res) => {
 export const getProductBySlug = async (req, res) => {
   try {
     const { slug } = req.params;
-    
+
     // Try to find by slug first
     let product = await Product.findOne({ slug: slug });
-    
+
     // If not found by slug, try to find by ObjectId
     if (!product) {
       product = await Product.findById(slug);

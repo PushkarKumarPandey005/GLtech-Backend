@@ -39,7 +39,7 @@ app.use(limiter);
 /* ---------- Body Parser ---------- */
 app.use(express.json());
 
-/* ---------- ⭐ ADD THIS HERE ---------- */
+/* ----------  ADD THIS HERE ---------- */
 app.use("/uploads", express.static("uploads"));
 
 app.use(express.json({ limit: "10mb" }));

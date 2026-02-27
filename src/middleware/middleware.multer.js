@@ -1,7 +1,26 @@
 import multer from "multer";
+import path from "path";
+import fs from "fs";
 
-const storage = multer.memoryStorage();
+// ✅ uploads folder auto-create
+const uploadDir = "uploads";
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
 
+// ✅ disk storage
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadDir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueName =
+      Date.now() + "-" + file.originalname.replace(/\s+/g, "_");
+    cb(null, uniqueName);
+  },
+});
+
+// ✅ file filter
 const fileFilter = (req, file, cb) => {
   const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
 
@@ -12,6 +31,7 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+//  multer instance
 const upload = multer({
   storage,
   fileFilter,

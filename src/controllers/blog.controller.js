@@ -1,8 +1,7 @@
+import mongoose from "mongoose";
 import Blog from "../model/blog.model.js";
 import cloudinary from "../config/config.cloudinary.js"
 import fs from "fs";
-import path from "path";
-
 /* ================================
         Helper: slug generator
 ================================ */
@@ -16,8 +15,9 @@ const generateSlug = (title) =>
 /* ================================
         CREATE BLOG
 ================================ */
+
+
 export const createBlog = async (req, res) => {
-    console.log("REQ.FILE →", req.file);
   try {
     let {
       title,
@@ -51,20 +51,18 @@ export const createBlog = async (req, res) => {
     }
     if (!Array.isArray(tags)) tags = [];
 
-    /* ---------- ⭐ CLOUDINARY UPLOAD ---------- */
+    /* ---------- CLOUDINARY UPLOAD (UPDATED) ---------- */
     let featuredImage = "";
 
     if (req.file) {
-      const uploadResult = await new Promise((resolve, reject) => {
-        cloudinary.uploader
-          .upload_stream({ folder: "blogs" }, (error, result) => {
-            if (error) return reject(error);
-            resolve(result);
-          })
-          .end(req.file.buffer);
+      const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "blogs",
       });
 
-      featuredImage = uploadResult.secure_url;
+      featuredImage = result.secure_url;
+
+      // ✅ local file delete (important)
+      fs.unlinkSync(req.file.path);
     }
 
     /* ---------- slug ---------- */
@@ -104,7 +102,6 @@ export const createBlog = async (req, res) => {
     });
   }
 };
-
 
 /* ================================
     GET ALL BLOGS (PUBLIC)

@@ -1,4 +1,5 @@
 import express from "express";
+import upload from "../middleware/middleware.multer.js";
 import {
   createBlog,
   updateBlog,
@@ -20,19 +21,18 @@ const router = express.Router();
 ================================ */
 router.post(
   "/",
-  validate(createBlogSchema), // ✅ multer हटाया
+  upload.single("featuredImage"), // 🔥 MUST
   createBlog
 );
-
 /* ================================
    UPDATE BLOG
 ================================ */
 router.put(
   "/:id",
-  validate(updateBlogSchema), // ✅ multer हटाया
+  upload.single("featuredImage"),
+  validate(updateBlogSchema),
   updateBlog
 );
-
 /* ================================
    GET BLOGS
 ================================ */

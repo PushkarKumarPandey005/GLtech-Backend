@@ -18,16 +18,13 @@ import { validateProduct as validate } from '../middleware/middleware.dataValida
 
 const router = express.Router();
 
-// =======================
-// 🔥 SPECIFIC ROUTES FIRST
-// =======================
 
 router.get("/search", searchProperties);
 router.get("/properties", getProperties);
 router.get("/public", getPublicProducts);
 router.get("/type/:type", getProductsByType);
 
-// ✅ Stationery routes BEFORE dynamic id
+// Stationery routes BEFORE dynamic id
 router.get("/stationery", getStationeryProducts);
 router.get("/slug/:slug", getProductBySlug);
 
