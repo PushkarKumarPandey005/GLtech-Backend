@@ -254,7 +254,6 @@ export const updateProduct = async (req, res) => {
         const fileName = parts.pop();
         const folderName = parts.pop();
         const publicId = `${folderName}/${fileName.split(".")[0]}`;
-
         await cloudinary.uploader.destroy(publicId);
       } catch (e) {
         console.log("Cloudinary delete failed:", e.message);
@@ -266,12 +265,10 @@ export const updateProduct = async (req, res) => {
       for (const file of req.files) {
         try {
           const result = await cloudinary.uploader.upload(file.path, {
-            folder: "products", // ⚠️ keep consistent
+            folder: "products",
           });
-
           imageUrls.push(result.secure_url);
 
-          // local delete
           if (file?.path && fs.existsSync(file.path)) {
             fs.unlinkSync(file.path);
           }
@@ -283,34 +280,30 @@ export const updateProduct = async (req, res) => {
 
     /* ================= BOOLEAN FIX ================= */
     const priceNegotiable =
-      req.body.priceNegotiable === "true" ||
-      req.body.priceNegotiable === true;
+      req.body.priceNegotiable === "true" || req.body.priceNegotiable === true;
 
-    /* ================= SAFE UPDATE OBJECT ================= */
+    /* ================= SAFE UPDATE OBJECT ✅ ================= */
+    // Sirf woh fields update hongi jo request mein aayi hain
     const updateData = {
-      title: req.body.title,
-      description: req.body.description,
-      price: req.body.price,
-      discountPrice: req.body.discountPrice,
-      stock: req.body.stock,
-      size: req.body.size,
-      material: req.body.material,
-      weight: req.body.weight,
-      color: req.body.color,
-      brand: req.body.brand,
+      ...(req.body.title !== undefined && { title: req.body.title }),
+      ...(req.body.description !== undefined && { description: req.body.description }),
+      ...(req.body.price !== undefined && { price: req.body.price }),
+      ...(req.body.discountPrice !== undefined && { discountPrice: req.body.discountPrice }),
+      ...(req.body.stock !== undefined && { stock: req.body.stock }),
+      ...(req.body.size !== undefined && { size: req.body.size }),
+      ...(req.body.material !== undefined && { material: req.body.material }),
+      ...(req.body.weight !== undefined && { weight: req.body.weight }),
+      ...(req.body.color !== undefined && { color: req.body.color }),
+      ...(req.body.brand !== undefined && { brand: req.body.brand }),
       priceNegotiable,
       productImg: imageUrls,
     };
 
     /* ================= DB UPDATE ================= */
-    const updatedProduct = await Product.findByIdAndUpdate(
-      id,
-      updateData,
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
+    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     return res.status(200).json({
       success: true,
@@ -325,7 +318,6 @@ export const updateProduct = async (req, res) => {
     });
   }
 };
-
 
 
 export const deleteProduct = async (req, res) => {

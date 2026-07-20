@@ -81,6 +81,9 @@ app.use((req, res, next) => {
 });
 
 /* ---------- Routes ---------- */
+app.get('/', (req, res) => {
+  res.status(200).json({ status: "success", message: "GL Tech Backend Server is Awake & Running 🚀" });
+});
 app.use("/api/products", productsRoutes);
 app.use("/user", userRoutes);
 app.use("/api/orders", orderRoutes);
